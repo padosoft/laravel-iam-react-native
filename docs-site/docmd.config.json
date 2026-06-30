@@ -1,0 +1,147 @@
+{
+  "title": "laravel-iam-react-native",
+  "description": "Laravel IAM React Native client SDK — thin, fail-closed, built on @padosoft/laravel-iam-node, with IamProvider + hooks useIam / useCan / usePermission. RN-safe (no node:crypto).",
+  "url": "https://doc.laravel-iam-react-native.padosoft.com",
+  "src": "docs",
+  "out": "_site",
+  "base": "/",
+
+  "favicon": "assets/favicon.svg",
+  "theme": {
+    "name": "default",
+    "defaultMode": "dark",
+    "customCss": ["assets/custom.css"]
+  },
+
+  "autoTitleFromH1": true,
+  "copyCode": true,
+  "pageNavigation": true,
+  "minify": true,
+  "markdown": { "breaks": true },
+
+  "layout": {
+    "spa": true,
+    "header": { "enabled": true },
+    "sidebar": { "collapsible": true, "defaultCollapsed": false },
+    "optionsMenu": {
+      "position": "header",
+      "components": { "search": true, "themeSwitch": true }
+    }
+  },
+
+  "navigation": [
+    {
+      "title": "Get Started",
+      "icon": "rocket",
+      "children": [
+        { "title": "Introduction", "path": "/" },
+        { "title": "Quickstart", "path": "/quickstart" },
+        { "title": "Installation", "path": "/installation" },
+        { "title": "Core concepts", "path": "/core-concepts" }
+      ]
+    },
+    {
+      "title": "Guides",
+      "icon": "book-open",
+      "children": [
+        { "title": "Checking permissions with hooks", "path": "/guides/checking-permissions" },
+        { "title": "The IamProvider", "path": "/guides/provider" },
+        { "title": "Verifying tokens (JWKS)", "path": "/guides/verifying-tokens" },
+        { "title": "ReBAC list-resources", "path": "/guides/list-resources" },
+        { "title": "Caching decisions", "path": "/guides/caching" }
+      ]
+    },
+    {
+      "title": "Concepts & Theory",
+      "icon": "square-function",
+      "children": [
+        { "title": "Fail-closed by design", "path": "/concepts/fail-closed" },
+        { "title": "The hook lifecycle", "path": "/concepts/hook-lifecycle" },
+        { "title": "The decision model", "path": "/concepts/decision-model" },
+        { "title": "Step-up & AAL", "path": "/concepts/step-up-aal" },
+        { "title": "RN-safe: no node:crypto", "path": "/concepts/rn-safe" }
+      ]
+    },
+    {
+      "title": "Architecture",
+      "icon": "workflow",
+      "children": [
+        { "title": "Architecture overview", "path": "/architecture/overview" },
+        { "title": "Hook → client → server flow", "path": "/architecture/decision-flow" },
+        { "title": "Wire contract", "path": "/architecture/wire-contract" },
+        { "title": "ADR", "path": "/architecture/decisions" }
+      ]
+    },
+    {
+      "title": "Best Practices",
+      "icon": "lightbulb",
+      "children": [
+        { "title": "Fail-closed discipline", "path": "/best-practices/fail-closed-discipline" },
+        { "title": "Caching safely", "path": "/best-practices/caching-safely" },
+        { "title": "Hermes & Web Crypto", "path": "/best-practices/hermes-web-crypto" }
+      ]
+    },
+    {
+      "title": "Reference",
+      "icon": "book-marked",
+      "children": [
+        { "title": "IamClient API", "path": "/reference/client" },
+        { "title": "Provider & Hooks API", "path": "/reference/hooks" },
+        { "title": "Types", "path": "/reference/types" },
+        { "title": "Errors", "path": "/reference/errors" }
+      ]
+    },
+    {
+      "title": "Links",
+      "children": [
+        { "title": "GitHub", "path": "https://github.com/padosoft/laravel-iam-react-native", "external": true },
+        { "title": "npm", "path": "https://www.npmjs.com/package/@padosoft/laravel-iam-react-native", "external": true }
+      ]
+    }
+  ],
+
+  "footer": {
+    "style": "minimal",
+    "branding": true,
+    "content": "© Lorenzo Padovani — [Padosoft](https://github.com/padosoft) · [GitHub](https://github.com/padosoft/laravel-iam-react-native) · MIT",
+    "columns": [
+      {
+        "title": "Project",
+        "links": [
+          { "title": "GitHub", "path": "https://github.com/padosoft/laravel-iam-react-native", "external": true },
+          { "title": "npm", "path": "https://www.npmjs.com/package/@padosoft/laravel-iam-react-native", "external": true }
+        ]
+      },
+      {
+        "title": "Author",
+        "links": [
+          { "title": "Lorenzo Padovani", "path": "https://github.com/lorenzo-padovani", "external": true },
+          { "title": "Padosoft", "path": "https://github.com/padosoft", "external": true }
+        ]
+      }
+    ]
+  },
+
+  "plugins": {
+    "search": { "enabled": true, "semantic": true, "placeholder": "Search the docs…" },
+    "git": {
+      "repo": "https://github.com/padosoft/laravel-iam-react-native",
+      "branch": "main",
+      "editLink": true,
+      "lastUpdated": true,
+      "commitHistory": true,
+      "dateFormat": "relative"
+    },
+    "seo": {
+      "defaultDescription": "Laravel IAM React Native client SDK — thin, fail-closed, with IamProvider + hooks. RN-safe (no node:crypto).",
+      "aiBots": true,
+      "openGraph": {},
+      "twitter": { "cardType": "summary_large_image" }
+    },
+    "sitemap": { "defaultChangefreq": "weekly", "defaultPriority": 0.8 },
+    "mermaid": {},
+    "math": {},
+    "llms": { "fullContext": true },
+    "analytics": { "enabled": false }
+  }
+}

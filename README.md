@@ -5,8 +5,11 @@
 [![tests](https://github.com/padosoft/laravel-iam-react-native/actions/workflows/tests.yml/badge.svg)](https://github.com/padosoft/laravel-iam-react-native/actions/workflows/tests.yml)
 [![npm](https://img.shields.io/npm/v/@padosoft/laravel-iam-react-native.svg)](https://www.npmjs.com/package/@padosoft/laravel-iam-react-native)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![docs](https://img.shields.io/badge/docs-doc.laravel--iam--react--native.padosoft.com-0d9488.svg)](https://doc.laravel-iam-react-native.padosoft.com)
 
 Ask the IAM server *"can this user do this?"* from your React Native (or React) app — with the **exact same wire contract and guarantees as the PHP and Node clients**, plus React hooks that stay fail-closed while loading.
+
+> **📚 Full documentation: [doc.laravel-iam-react-native.padosoft.com](https://doc.laravel-iam-react-native.padosoft.com)** — quickstart, hook lifecycle, fail-closed theory, the Hermes/Web Crypto caveat, ADRs, and the full API reference.
 
 ## Why
 
@@ -161,11 +164,13 @@ Verifies an ES256 token against the server JWKS. Rejects with `TokenVerification
 
 ## Ecosystem
 
-| Package | Runtime | Description |
-|---------|---------|-------------|
-| [`@padosoft/laravel-iam-node`](https://github.com/padosoft/laravel-iam-node) | Node 18+ | Core TypeScript/Node SDK (middleware included) |
-| `@padosoft/laravel-iam-react-native` | React Native / React | This package |
-| [`padosoft/laravel-iam-client`](https://github.com/padosoft/laravel-iam-client) | PHP 8.1+ | PHP client — the wire-contract reference |
+| Package | Runtime | Description | Docs |
+|---------|---------|-------------|------|
+| [`laravel-iam-server`](https://github.com/padosoft/laravel-iam-server) | PHP/Laravel | The IAM server — the PDP itself (RBAC + ABAC + ReBAC, OAuth/OIDC, audit) | [docs](https://doc.laravel-iam-server.padosoft.com) |
+| [`@padosoft/laravel-iam-node`](https://github.com/padosoft/laravel-iam-node) | Node 18+ | Core TypeScript/Node SDK — this package builds on its wire types | [docs](https://doc.laravel-iam-node.padosoft.com) |
+| `@padosoft/laravel-iam-react-native` | React Native / React | **This package** | [docs](https://doc.laravel-iam-react-native.padosoft.com) |
+| [`padosoft/laravel-iam-client`](https://github.com/padosoft/laravel-iam-client) | PHP 8.1+ | PHP client — the wire-contract reference | [docs](https://doc.laravel-iam-client.padosoft.com) |
+| [`laravel-iam-rust`](https://github.com/padosoft/laravel-iam-rust) | Rust | Rust client SDK (crate `laravel-iam`), async + blocking | [docs](https://doc.laravel-iam-rust.padosoft.com) |
 
 ## License
 

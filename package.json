@@ -1,0 +1,58 @@
+{
+  "name": "@padosoft/laravel-iam-react-native",
+  "version": "1.0.0",
+  "description": "Thin, fail-closed React Native client and hooks for the Laravel IAM control plane.",
+  "keywords": ["iam","authorization","pdp","rbac","rebac","abac","oauth2","react-native","react","hooks","laravel","padosoft","fail-closed"],
+  "license": "MIT",
+  "author": "Padosoft <support@padosoft.com> (https://www.padosoft.com)",
+  "homepage": "https://github.com/padosoft/laravel-iam-react-native#readme",
+  "repository": {"type":"git","url":"git+https://github.com/padosoft/laravel-iam-react-native.git"},
+  "bugs": {"url":"https://github.com/padosoft/laravel-iam-react-native/issues"},
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {"types":"./dist/index.d.ts","default":"./dist/index.js"},
+      "require": {"types":"./dist/index.d.cts","default":"./dist/index.cjs"}
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist","README.md","LICENSE"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@padosoft/laravel-iam-node": "file:../laravel-iam-node",
+    "jose": "^5.9.6"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-native": ">=0.71"
+  },
+  "peerDependenciesMeta": {
+    "react-native": {"optional": true}
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.0.0",
+    "@types/node": "^20.16.5",
+    "@types/react": "^18.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint": "^8.57.1",
+    "jsdom": "^25.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "publishConfig": {"access":"public"}
+}

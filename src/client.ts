@@ -40,6 +40,16 @@ export class IamClient {
     if (!config.baseUrl) {
       throw new Error('IamClient: `baseUrl` is required');
     }
+    // Require an absolute URL up front. Otherwise `new URL(baseUrl)` later silently
+    // drops the issuer check (defaultIssuer → undefined) and `defaultJwksUri()` —
+    // called outside verifyToken's try/catch — throws a raw error instead of a
+    // TokenVerificationError. Validate once, fail loud at construction.
+    try {
+      // eslint-disable-next-line no-new
+      new URL(config.baseUrl);
+    } catch {
+      throw new Error('IamClient: `baseUrl` must be an absolute URL (e.g. https://iam.example.com/api/iam/v1)');
+    }
     this.baseUrl = config.baseUrl.replace(/\/+$/, '');
     this.token = config.token;
     this.timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -121,12 +131,23 @@ export class IamClient {
     }
 
     const opts = { ...this.verifyDefaults, ...options };
+
+    // Fail-closed on audience: jose silently SKIPS the `aud` check when no
+    // audience is supplied, so a token minted for another service in the same
+    // cluster (right issuer, right signing key) would verify. Require an explicit
+    // audience (client `verify.audience` or per-call `options.audience`).
+    if (opts.audience === undefined) {
+      throw new TokenVerificationError(
+        'audience is required: set `verify.audience` on the client or pass `options.audience` to verifyToken',
+      );
+    }
+
     const uri = opts.jwksUri ?? this.defaultJwksUri();
     const issuer = opts.issuer ?? this.defaultIssuer();
     const verifyOptions = {
       algorithms: ['ES256'] as string[],
       ...(issuer !== undefined ? { issuer } : {}),
-      ...(opts.audience !== undefined ? { audience: opts.audience } : {}),
+      audience: opts.audience,
     };
 
     let refetched = false;

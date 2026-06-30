@@ -30,7 +30,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@padosoft/laravel-iam-node": "file:../laravel-iam-node",
+    "@padosoft/laravel-iam-node": "^1.0.0",
     "jose": "^5.9.6"
   },
   "peerDependencies": {

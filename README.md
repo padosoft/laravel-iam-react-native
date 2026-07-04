@@ -139,11 +139,24 @@ const { allowed } = usePermission('orders.approve', { type: 'order', id: orderId
 | Option | Default | Description |
 |--------|---------|-------------|
 | `baseUrl` | required | Full API base, e.g. `https://iam.example.com/api/iam/v1`. |
-| `token` | — | Service token sent as `Authorization: Bearer`. |
+| `token` | — | The **user's** access token, sent as `Authorization: Bearer`. |
 | `timeoutMs` | `2000` | Per-request timeout in ms. |
 | `retries` | `0` | Retries for idempotent network errors (never on 4xx/5xx). |
 | `cache` | off | `{ ttlMs, maxEntries? }` in-memory decision cache. |
 | `verify` | — | `{ issuer?, audience?, jwksUri? }` defaults for `verifyToken`. |
+
+### Credential model — this is a PUBLIC client (no shared secret)
+
+Unlike the server SDKs (`laravel-iam-client`, `laravel-iam-node`, `laravel-iam-rust`), a mobile app is a
+**public OAuth client**: it must **never** embed a `client_secret` (anything shipped in an app binary is
+extractable). So the **client-secret rotation / self-fetch** feature does **not** apply here — there is no
+secret to rotate.
+
+Instead, obtain the `token` through the **Authorization Code + PKCE** flow (the user logs in against IAM),
+keep it **short-lived**, and refresh it with the **refresh token** — never with a static secret. Pass the
+current user access token as `token`; when it expires, run the refresh/re-auth flow and update the client.
+See [Application credentials & lifecycle](https://doc.laravel-iam-server.padosoft.com/guides/application-credentials)
+(§ public clients).
 | `fetch` | `globalThis.fetch` | Inject a custom fetch (tests, proxies). |
 
 ### `check(query): Promise<Decision>`

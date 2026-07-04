@@ -144,6 +144,7 @@ const { allowed } = usePermission('orders.approve', { type: 'order', id: orderId
 | `retries` | `0` | Retries for idempotent network errors (never on 4xx/5xx). |
 | `cache` | off | `{ ttlMs, maxEntries? }` in-memory decision cache. |
 | `verify` | — | `{ issuer?, audience?, jwksUri? }` defaults for `verifyToken`. |
+| `fetch` | `globalThis.fetch` | Inject a custom fetch (tests, proxies). |
 
 ### Credential model — this is a PUBLIC client (no shared secret)
 
@@ -157,7 +158,6 @@ keep it **short-lived**, and refresh it with the **refresh token** — never wit
 current user access token as `token`; when it expires, run the refresh/re-auth flow and update the client.
 See [Application credentials & lifecycle](https://doc.laravel-iam-server.padosoft.com/guides/application-credentials)
 (§ public clients).
-| `fetch` | `globalThis.fetch` | Inject a custom fetch (tests, proxies). |
 
 ### `check(query): Promise<Decision>`
 

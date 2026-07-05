@@ -175,6 +175,14 @@ ReBAC list-resources. Returns `[]` on any error.
 
 Verifies an ES256 token against the server JWKS. Rejects with `TokenVerificationError` on any failure.
 
+## Managing permissions/roles? Not here — this SDK is a consumer
+
+This package **consumes** decisions (it asks "can this subject do X?"); it does **not** own a permission
+catalog and does **not** declare or push manifests. A mobile/public client has no server-side catalog to
+sync. Permissions and roles are declared by the **service that owns them** (a Laravel app with the bridge,
+or a Node/Rust service, or the console) and synced there. See
+[Keeping IAM in sync](https://doc.laravel-iam-server.padosoft.com/guides/keeping-in-sync).
+
 ## Ecosystem
 
 | Package | Runtime | Description | Docs |

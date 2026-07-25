@@ -1,6 +1,6 @@
 {
   "name": "@padosoft/laravel-iam-react-native",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Thin, fail-closed React Native client and hooks for the Laravel IAM control plane.",
   "keywords": ["iam","authorization","pdp","rbac","rebac","abac","oauth2","react-native","react","hooks","laravel","padosoft","fail-closed"],
   "license": "MIT",

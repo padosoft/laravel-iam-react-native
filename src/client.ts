@@ -6,13 +6,15 @@
 } from 'jose';
 import { DecisionCache, cacheKey } from './cache.js';
 import { decisionFromBody, deny, isGranted } from './decision.js';
+import { actorChainFromClaims, MalformedDelegationError } from './delegation.js';
 import { TokenVerificationError } from './errors.js';
-import type { IamClientConfig } from './types.js';
-import type { Claims, Decision, DecisionQuery, Resource, VerifyOptions } from '@padosoft/laravel-iam-node';
+import type { DelegatedDecisionQuery, IamClientConfig } from './types.js';
+import type { Claims, Decision, DecisionQuery, Resource, Subject, VerifyOptions } from '@padosoft/laravel-iam-node';
 
 const DEFAULT_TIMEOUT_MS = 2000;
 const DEFAULT_CHECK_PATH = 'decisions/check';
 const DEFAULT_LIST_RESOURCES_PATH = 'decisions/list-resources';
+const DEFAULT_CHECK_DELEGATED_PATH = 'decisions/check-delegated';
 const JWKS_MAX_AGE_MS = 10 * 60 * 1000;
 
 /**
@@ -33,6 +35,7 @@ export class IamClient {
   private readonly cache: DecisionCache;
   private readonly checkPath: string;
   private readonly listResourcesPath: string;
+  private readonly checkDelegatedPath: string;
   private readonly verifyDefaults: VerifyOptions;
   private readonly jwks = new Map<string, { keySet: JWTVerifyGetKey; fetchedAt: number }>();
 
@@ -58,6 +61,9 @@ export class IamClient {
     this.cache = new DecisionCache(config.cache?.ttlMs ?? 0, config.cache?.maxEntries);
     this.checkPath = trimPath(config.checkPath ?? DEFAULT_CHECK_PATH);
     this.listResourcesPath = trimPath(config.listResourcesPath ?? DEFAULT_LIST_RESOURCES_PATH);
+    this.checkDelegatedPath = trimPath(
+      config.checkDelegatedPath ?? DEFAULT_CHECK_DELEGATED_PATH,
+    );
     this.verifyDefaults = config.verify ?? {};
 
     if (typeof this.fetchImpl !== 'function') {
@@ -67,21 +73,28 @@ export class IamClient {
     }
   }
 
-  async check(query: DecisionQuery): Promise<Decision> {
+  async check(query: DelegatedDecisionQuery): Promise<Decision> {
     if (!query.subject || !query.subject.id) {
       return deny('no-subject');
     }
 
     const payload = toPayload(query);
     const explain = query.explain === true;
+    const delegated = payload['actors'] !== undefined;
 
-    const key = !explain && this.cache.enabled ? cacheKey(payload) : undefined;
+    // Explain queries are never cached, and neither are DELEGATED ones: a grant can be
+    // revoked at any moment, and a cached delegated allow would outlive the revocation
+    // that was supposed to stop it.
+    const key = !explain && !delegated && this.cache.enabled ? cacheKey(payload) : undefined;
     if (key !== undefined) {
       const cached = this.cache.get(key);
       if (cached) return cached;
     }
 
-    const body = await this.requestJson(this.checkPath, payload);
+    const body = await this.requestJson(
+      delegated ? this.checkDelegatedPath : this.checkPath,
+      payload,
+    );
     if (body === undefined) {
       return deny('transport');
     }
@@ -95,6 +108,48 @@ export class IamClient {
 
   async can(query: DecisionQuery): Promise<boolean> {
     return isGranted(await this.check(query));
+  }
+
+  /**
+   * Ask the PDP whether an AGENT may do something ON BEHALF OF the user.
+   *
+   * The verdict is the strict intersection — the user's authority AND every actor's
+   * authority AND the grant's scope — never the union. Adding a hop can only narrow
+   * what is permitted.
+   *
+   * Use it to drive UI: a consent screen showing what an agent would be able to do,
+   * or a "your agents" view. The PDP decides; this app only asks.
+   *
+   * An empty chain is a deny, not a fall-back to the plain user check.
+   *
+   * @param actors act chain, `agent:<id>`, CURRENT actor first
+   */
+  async checkDelegated(
+    subject: { type?: string | undefined; id: string },
+    actors: string[],
+    permission: string,
+    options: Omit<DelegatedDecisionQuery, 'subject' | 'permission' | 'actors'> = {},
+  ): Promise<Decision> {
+    if (!subject || !subject.id) return deny('no-subject');
+
+    const chain = (actors ?? []).filter((a): a is string => typeof a === 'string' && a !== '');
+    if (chain.length === 0) return deny('no-actor');
+
+    const normalized: Subject = subject.type === undefined
+      ? { id: subject.id }
+      : { type: subject.type, id: subject.id };
+
+    return this.check({ ...options, subject: normalized, permission, actors: chain });
+  }
+
+  /** Fail-safe wrapper around {@link checkDelegated}. */
+  async canDelegated(
+    subject: { type?: string | undefined; id: string },
+    actors: string[],
+    permission: string,
+    options: Omit<DelegatedDecisionQuery, 'subject' | 'permission' | 'actors'> = {},
+  ): Promise<boolean> {
+    return isGranted(await this.checkDelegated(subject, actors, permission, options));
   }
 
   async listResources(
@@ -161,6 +216,16 @@ export class IamClient {
 
       try {
         const { payload } = await jwtVerify(jwt, keySet, verifyOptions);
+        // A DELEGATED token has a valid signature and a `sub` naming the user — so it
+        // verifies here perfectly, and returning it would hand the caller the user's
+        // FULL authority while silently discarding the bound scope of the agent that
+        // actually holds it. That is the confused deputy delegation exists to prevent,
+        // so this method refuses delegated tokens outright.
+        //
+        // A mobile client cannot authorize one either way: that needs server-side
+        // introspection, which needs credentials this app must never hold. Send the
+        // token to your backend, and use `checkDelegated` for UI decisions.
+        assertNotDelegated(payload as Record<string, unknown>);
         return payload as Claims;
       } catch (err) {
         if (!refetched && isKeyResolutionError(err)) {
@@ -264,6 +329,29 @@ export class IamClient {
   }
 }
 
+/**
+ * Refuse a delegated token on the plain-user verification path.
+ *
+ * A malformed `act` is refused just as firmly as a well-formed one: "unreadable" must
+ * never degrade into "not delegated", which would be the escalation itself.
+ */
+function assertNotDelegated(payload: Record<string, unknown>): void {
+  let actors: string[] | null;
+  try {
+    actors = actorChainFromClaims(payload);
+  } catch (err) {
+    const reason = err instanceof MalformedDelegationError ? err.message : 'unreadable act claim';
+    throw new TokenVerificationError(reason);
+  }
+  if (actors !== null) {
+    throw new TokenVerificationError(
+      'delegated token: verifyToken is the plain-user path. A delegated token must be ' +
+        'authorized server-side (introspection + a delegated decision), never from its ' +
+        'claims on a client. See `checkDelegated`.',
+    );
+  }
+}
+
 function trimPath(path: string): string {
   return path.replace(/^\/+|\/+$/g, '');
 }
@@ -285,8 +373,8 @@ function unwrap(body: unknown): unknown {
   return body;
 }
 
-function toPayload(query: DecisionQuery): Record<string, unknown> {
-  return {
+function toPayload(query: DelegatedDecisionQuery): Record<string, unknown> {
+  const body: Record<string, unknown> = {
     subject: { type: query.subject.type ?? 'user', id: query.subject.id },
     permission: query.permission,
     organization: query.organization ?? null,
@@ -296,4 +384,16 @@ function toPayload(query: DecisionQuery): Record<string, unknown> {
     current_aal: query.currentAal ?? 'aal1',
     explain: query.explain === true,
   };
+
+  // Delegation keys appear ONLY on delegated queries, so the plain-check body stays
+  // byte-identical and an older server is unaffected.
+  const actors = (query.actors ?? []).filter((a): a is string => typeof a === 'string' && a !== '');
+  if (actors.length > 0) {
+    body['actors'] = actors;
+    if (typeof query.delegationGrantId === 'string' && query.delegationGrantId !== '') {
+      body['delegation_grant_id'] = query.delegationGrantId;
+    }
+  }
+
+  return body;
 }

@@ -48,7 +48,8 @@
         { "title": "The IamProvider", "path": "/guides/provider" },
         { "title": "Verifying tokens (JWKS)", "path": "/guides/verifying-tokens" },
         { "title": "ReBAC list-resources", "path": "/guides/list-resources" },
-        { "title": "Caching decisions", "path": "/guides/caching" }
+        { "title": "Caching decisions", "path": "/guides/caching" },
+        { "title": "Delegated access (agents)", "path": "/guides/delegated-access" }
       ]
     },
     {

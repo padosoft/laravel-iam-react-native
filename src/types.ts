@@ -19,7 +19,25 @@ export type {
   VerifyOptions,
 } from '@padosoft/laravel-iam-node';
 
-import type { CacheOptions, VerifyOptions } from '@padosoft/laravel-iam-node';
+import type { CacheOptions, DecisionQuery, VerifyOptions } from '@padosoft/laravel-iam-node';
+
+// ---- Delegated wire types ----------------------------------------------------
+
+/**
+ * A decision query that names an **act chain**: an agent acting on behalf of the
+ * subject. Sent to `decisions/check-delegated`, where the verdict is the strict
+ * intersection of the subject and every actor — never the union.
+ *
+ * Declared here rather than imported so this package is never gated on a specific
+ * `@padosoft/laravel-iam-node` release; the shape is identical to the Node and PHP
+ * SDKs, and the fields are omitted entirely from a plain check's body.
+ */
+export type DelegatedDecisionQuery = DecisionQuery & {
+  /** Act chain, `agent:<id>`, CURRENT actor first, root last. */
+  actors?: string[] | undefined;
+  /** `pds_dgr` of the grant the delegation descends from. */
+  delegationGrantId?: string | null | undefined;
+};
 
 // ---- RN-specific config & state types ---------------------------------------
 
@@ -50,6 +68,11 @@ export interface IamClientConfig {
   checkPath?: string | undefined;
   /** Path appended to `baseUrl` for list-resources. Default `decisions/list-resources`. */
   listResourcesPath?: string | undefined;
+  /**
+   * Path appended to `baseUrl` for the DELEGATED check.
+   * Default `decisions/check-delegated`.
+   */
+  checkDelegatedPath?: string | undefined;
 }
 
 /** Live state returned by permission-checking hooks. */

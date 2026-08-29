@@ -3,7 +3,7 @@ import { isGranted } from './decision.js';
 import { IamContext } from './provider.js';
 import type { IamContextValue } from './provider.js';
 import type { DecisionQuery, Resource } from '@padosoft/laravel-iam-node';
-import type { PermissionState } from './types.js';
+import type { DelegatedDecisionQuery, PermissionState } from './types.js';
 
 const DENIED_LOADING: PermissionState = { allowed: false, loading: true, requiresStepUp: false };
 const DENIED_FINAL: PermissionState = { allowed: false, loading: false, requiresStepUp: false };
@@ -97,6 +97,74 @@ export function usePermission(
 
     client
       .check(q)
+      .then((decision) => {
+        if (cancelled) return;
+        setState({
+          allowed: isGranted(decision),
+          loading: false,
+          requiresStepUp: decision.requiresStepUp,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setState(DENIED_FINAL);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // queryKey is a stable serialisation of all query inputs
+  }, [client, queryKey]);
+
+  return state;
+}
+
+/**
+ * Reactive DELEGATED permission check: may `actors` do `permission` on behalf of the
+ * subject from the nearest {@link IamProvider}?
+ *
+ * Use it to drive UI that talks about agents — a consent screen previewing what an
+ * agent would be able to do, a "your agents" list, a disabled button explaining that
+ * an agent cannot take an action for you. The PDP decides; the app only asks.
+ *
+ * Fail-closed exactly like {@link usePermission}: denied while loading, denied on any
+ * error, and denied — **without a network call** — when there is no subject or the
+ * actor chain is empty. An empty chain is never a fall-back to the plain user check:
+ * that would answer a question about the user when the caller asked about an agent.
+ *
+ * @param actors act chain, `agent:<id>`, CURRENT actor first
+ */
+export function useDelegatedPermission(
+  actors: string[],
+  permission: string,
+  resource?: Resource | string | null,
+  extra?: Partial<Omit<DelegatedDecisionQuery, 'permission' | 'resource' | 'subject' | 'actors'>>,
+): PermissionState {
+  const { client, subject } = useIam();
+  const [state, setState] = useState<PermissionState>(DENIED_LOADING);
+
+  const chain = (actors ?? []).filter((a) => typeof a === 'string' && a !== '');
+  const queryKey = stableKey({
+    actors: chain,
+    permission,
+    resource: resource ?? null,
+    subject: subject ?? null,
+    extra: extra ?? {},
+  });
+
+  useEffect(() => {
+    if (!subject || !subject.id || chain.length === 0) {
+      setState(DENIED_FINAL);
+      return;
+    }
+
+    let cancelled = false;
+    setState(DENIED_LOADING);
+
+    client
+      .checkDelegated(subject, chain, permission, {
+        ...(resource != null ? { resource } : {}),
+        ...(extra ?? {}),
+      })
       .then((decision) => {
         if (cancelled) return;
         setState({

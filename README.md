@@ -116,6 +116,10 @@ const { allowed, loading, requiresStepUp } = useCan({
 });
 ```
 
+### `useDelegatedPermission(actors, permission, resource?, extra?): PermissionState`
+
+Like `usePermission`, but asks whether **an agent** may do it on behalf of the provider's subject. See [Delegated access](#delegated-access-agents-acting-for-the-user).
+
 ### `usePermission(permission, resource?, extra?): PermissionState`
 
 Convenience hook — reads `subject` from context, you supply `permission` and optionally `resource`.
@@ -142,7 +146,8 @@ const { allowed } = usePermission('orders.approve', { type: 'order', id: orderId
 | `token` | — | The **user's** access token, sent as `Authorization: Bearer`. |
 | `timeoutMs` | `2000` | Per-request timeout in ms. |
 | `retries` | `0` | Retries for idempotent network errors (never on 4xx/5xx). |
-| `cache` | off | `{ ttlMs, maxEntries? }` in-memory decision cache. |
+| `cache` | off | `{ ttlMs, maxEntries? }` in-memory decision cache. Delegated decisions bypass it by design. |
+| `checkDelegatedPath` | `decisions/check-delegated` | Path for the delegated PDP check. |
 | `verify` | — | `{ issuer?, audience?, jwksUri? }` defaults for `verifyToken`. |
 | `fetch` | `globalThis.fetch` | Inject a custom fetch (tests, proxies). |
 
@@ -173,7 +178,55 @@ ReBAC list-resources. Returns `[]` on any error.
 
 ### `verifyToken(jwt, options?): Promise<Claims>`
 
-Verifies an ES256 token against the server JWKS. Rejects with `TokenVerificationError` on any failure.
+Verifies an ES256 token against the server JWKS. Rejects with `TokenVerificationError` on any failure — **including a valid delegated token**, see below.
+
+## Delegated access (agents acting for the user)
+
+When an **AI agent acts on behalf of a user**, the token carries *two* identities: `sub` is the user, `act` is the agent (nested outermost-first when the chain is longer than one hop — RFC 8693 §4.1). The verdict is the **strict intersection** of what the user may do and what *every* actor may do — never the union. Adding a hop can only narrow authority.
+
+### `verifyToken` now REFUSES a delegated token
+
+This is the part that matters most on a mobile client, and it is worth being blunt about. A delegated token has a real signature, the right issuer and audience, and a `sub` naming the user — so it verifies *perfectly*. Returning its claims would hand your app the **user's full authority** while silently discarding the bound scope of the agent that actually holds the token. That is the confused deputy, on-device.
+
+So `verifyToken` rejects it, and says why. A malformed `act` is rejected just as firmly as a well-formed one: "unreadable" must never quietly become "not delegated".
+
+### There is deliberately no `verifyDelegatedToken` here
+
+Delegated tokens are **introspection-mandatory**: only the server can confirm the delegation is still live (the grant not revoked, the user's session not ended), and RFC 7662 introspection requires an authenticated caller. A mobile app is a **public** client — it holds no secret to authenticate with, and shipping one would publish it (see the credential-model note above). So this SDK does not pretend to verify delegated tokens.
+
+If your app receives one, hand it to **your backend**, which holds the credentials, does the introspection, and returns a plain answer. That is the same split the mobile security rules require of every AI feature: the device never holds the key, and the server re-validates.
+
+### `checkDelegated` / `canDelegated` / `useDelegatedPermission`
+
+What the app *can* do is ask the PDP — which is exactly what you need to drive UI about agents: a consent screen previewing what an agent would be able to do, a "your agents" list, a button disabled because an agent cannot take that action for you.
+
+```tsx
+import { useDelegatedPermission } from '@padosoft/laravel-iam-react-native';
+
+function AgentDraftButton({ actors }: { actors: string[] }) {
+  // actors = ['agent:assistant'] — CURRENT actor first
+  const { allowed, loading } = useDelegatedPermission(actors, 'orders.draft', {
+    type: 'order',
+    id: orderId,
+  });
+
+  return <Button disabled={!allowed || loading} title="Let the assistant draft it" />;
+}
+```
+
+Fail-closed exactly like `usePermission`: denied while loading, denied on any error, and denied **without a network call** when there is no subject or the actor chain is empty. An empty chain is never a fall-back to the plain user check — that would answer a question about the user when you asked about an agent.
+
+The imperative forms are `client.checkDelegated(subject, actors, permission, options?)` and `canDelegated(...)`.
+
+### Delegated decisions are never cached
+
+Even with the cache enabled. A grant can be revoked at any moment, and a cached delegated allow would outlive the revocation meant to stop it. Plain checks cache exactly as before.
+
+### Reading the chain for display
+
+`inspectDelegatedBearer(jwt)` parses a token locally — no `Buffer`, no `node:crypto`, UTF-8 safe — and returns `{ sub, actors, grantId, scopes }`, or `null` when the token is not delegated. It is **display and routing information, never authorization**: use it to render "Agent X, acting for you", then let the PDP decide. A malformed `act` throws `MalformedDelegationError` rather than degrading.
+
+Requires [`laravel-iam-agents`](https://doc.laravel-iam-agents.padosoft.com) on the server.
 
 ## Managing permissions/roles? Not here — this SDK is a consumer
 
